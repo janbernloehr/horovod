@@ -60,7 +60,9 @@ namespace gpu {
 GpuStreamHandle AsGpuStreamValue(Stream* stream);
 } // namespace stream_executor
 } // namespace gpu
-#if TENSORFLOW_VERSION >= 2011000000
+#if TENSORFLOW_VERSION >= 2018000000
+#include "xla/stream_executor/stream.h"
+#elif TENSORFLOW_VERSION >= 2011000000
 #include "tensorflow/compiler/xla/stream_executor/stream.h"
 #else
 #include "tensorflow/stream_executor/stream.h"

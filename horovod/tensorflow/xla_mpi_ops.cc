@@ -24,11 +24,21 @@
 
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
+
+#if TENSORFLOW_VERSION >= 2018000000
+#include "xla/client/xla_builder.h"
+#include "xla/service/custom_call_target_registry.h"
+#include "xla/service/hlo.pb.h"
+#include "xla/shape.h"
+#include "xla/xla_data.pb.h"
+#else
 #include "tensorflow/compiler/xla/client/xla_builder.h"
 #include "tensorflow/compiler/xla/service/custom_call_target_registry.h"
 #include "tensorflow/compiler/xla/service/hlo.pb.h"
 #include "tensorflow/compiler/xla/shape.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
+#endif
+
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/lib/hash/hash.h"
 #include "tensorflow/core/platform/human_readable_json.h"
