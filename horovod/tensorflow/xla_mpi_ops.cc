@@ -24,7 +24,11 @@
 
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
+#if TENSORFLOW_VERSION >= 2018000000
+#include "tensorflow/compiler/xla/hlo/builder/xla_builder.h"
+#else
 #include "tensorflow/compiler/xla/client/xla_builder.h"
+#endif
 #include "tensorflow/compiler/xla/service/custom_call_target_registry.h"
 #include "tensorflow/compiler/xla/service/hlo.pb.h"
 #include "tensorflow/compiler/xla/shape.h"
@@ -32,6 +36,11 @@
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/lib/hash/hash.h"
 #include "tensorflow/core/platform/human_readable_json.h"
+#if TENSORFLOW_VERSION >= 2020000000
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/synchronization/mutex.h"
+#endif
 
 #if HAVE_GPU
 #include "../common/common.h"
@@ -225,7 +234,11 @@ public:
   }
 
 private:
+#if TENSORFLOW_VERSION >= 2020000000
+  absl::StatusOr<::xla::XlaOp> BuildAllreduceCustomCall(
+#else
   ::xla::StatusOr<::xla::XlaOp> BuildAllreduceCustomCall(
+#endif
       ::xla::XlaBuilder* b, absl::Span<const ::xla::XlaOp> operands,
       bool is_start,
       absl::Span<const std::pair<::xla::ShapeIndex,
@@ -274,7 +287,11 @@ private:
 HVD_REGISTER_XLA_OP("HorovodAllreduce", HVDAllreduceOp);
 
 // A helper function to build HLOs for all-reduce.
+#if TENSORFLOW_VERSION >= 2020000000
+absl::StatusOr<::xla::XlaOp> HVDAllreduceOp::BuildAllreduceCustomCall(
+#else
 ::xla::StatusOr<::xla::XlaOp> HVDAllreduceOp::BuildAllreduceCustomCall(
+#endif
     ::xla::XlaBuilder* b, absl::Span<const ::xla::XlaOp> operands,
     bool is_start,
     absl::Span<
@@ -309,7 +326,11 @@ HVD_REGISTER_XLA_OP("HorovodAllreduce", HVDAllreduceOp);
 
 // Returns a hash for rendezvous.
 uint64 GetRendezvousKeyHash(const string& key) {
+#if TENSORFLOW_VERSION >= 2020000000
+  string k = absl::StrCat(key);
+#else
   string k = strings::StrCat(key);
+#endif
   return Hash64(k.data(), k.size());
 }
 
@@ -326,7 +347,11 @@ public:
   void Signal(string tensor_name, common::Event hvd_event) {
     // Use `tensor_name` to generate a hash value to retrieve the queue.
     uint64 key_hash = GetRendezvousKeyHash(tensor_name);
+#if TENSORFLOW_VERSION >= 2020000000
+    absl::MutexLock l(&mu_);
+#else
     mutex_lock l(mu_);
+#endif
     InitQueue(key_hash);
 
     Queue& queue = *table_[key_hash];
@@ -350,7 +375,11 @@ public:
     uint64 key_hash = GetRendezvousKeyHash(tensor_name);
 
     {
+#if TENSORFLOW_VERSION >= 2020000000
+      absl::MutexLock l(&mu_);
+#else
       mutex_lock l(mu_);
+#endif
       InitQueue(key_hash);
       Queue& queue = *table_[key_hash];
       if (queue.empty()) {
@@ -361,7 +390,11 @@ public:
     }
 
     auto has_available_signal = [&]() {
+#if TENSORFLOW_VERSION >= 2020000000
+      absl::MutexLock l(&mu_);
+#else
       mutex_lock l(mu_);
+#endif
       Queue& queue = *table_[key_hash];
       return nullptr != queue.front();
     };
@@ -372,7 +405,11 @@ public:
       std::this_thread::sleep_for(std::chrono::nanoseconds(100));
     }
 
+#if TENSORFLOW_VERSION >= 2020000000
+    absl::MutexLock l(&mu_);
+#else
     mutex_lock l(mu_);
+#endif
     Queue* queue = table_[key_hash];
     Payload* payload = queue->front();
     std::shared_ptr<gpuEvent_t> event = payload->event;
@@ -407,7 +444,11 @@ private:
   // values.
   typedef absl::flat_hash_map<uint64, Queue*> Table;
 
+#if TENSORFLOW_VERSION >= 2020000000
+  absl::Mutex mu_;
+#else
   mutex mu_;
+#endif
   Table table_ TF_GUARDED_BY(mu_);
 };
 
